@@ -142,7 +142,7 @@
     }
     detectApple()
     })(window)</script><meta name="generator" content="Hexo 6.3.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img is-center"><img src="https://s2.loli.net/2022/07/22/TrVvUw3BlZgJCob.png" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="sidebar-site-data site-data is-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">2</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">3</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url('data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7')"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">WhiteYL</a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> 分类</span></a></div></div><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">CatDFS Introduction</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2022-11-07T06:24:30.000Z" title="发表于 2022-11-07 14:24:30">2022-11-07</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2022-11-27T09:11:18.504Z" title="更新于 2022-11-27 17:11:18">2022-11-27</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title="CatDFS Introduction"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><h1 id="CatDFS"><a href="#CatDFS" class="headerlink" title="CatDFS"></a>CatDFS</h1><p>CatDFS是一个使用Golang实现轻量级的开源分布式文件系统。<br>它参考了<a target="_blank" rel="noopener" href="https://static.googleusercontent.com/media/research.google.com/zh-CN//archive/gfs-sosp2003.pdf">《The Google File System》</a>以及<a target="_blank" rel="noopener" href="https://github.com/apache/hadoop">HDFS</a>的设计并进行了改进和取舍。</p>
-<img src="./Catdfs Introduction/architecture.png" width="750" title="Architecture of CatDFS"/>
+<img src="/2022/11/07/catdfs/Catdfs%20Introduction/architecture.png" width="750" title="Architecture of CatDFS">
 
 <p>作为一个分布式文件系统，CatDFS主要具备以下特点：</p>
 <ul>
@@ -166,13 +166,13 @@
 <h4 id="Master"><a href="#Master" class="headerlink" title="Master"></a>Master</h4><p>Master是整个系统的中枢节点，负责维护系统的元数据（主要包括Chunk信息，chunkserver信息和文件树）。为了保证高可用性，Master采取多节点部署策略，并使用Raft共识算法（通过<a target="_blank" rel="noopener" href="https://github.com/hashicorp/raft">hashicorp&#x2F;raft</a>实现）保证Master多节点间的元数据一致性，并采用<a target="_blank" rel="noopener" href="https://github.com/hashicorp/raft">hashicorp&#x2F;raft</a>自带的日志持久化方式来完成元数据持久化。所有Master节点都会将自己的地址添加到Etcd中以确保Client和Chunkserver可以找到它们。<br>Master不会主动向Chunkserver发送命令，而是在接受Chunkserver的心跳时与Chunkserver同步信息，刷新元数据以及分配文件发送任务。Master还会接受Client的请求，根据用户请求查找或是修改元数据。</p>
 <h4 id="Chunkserver"><a href="#Chunkserver" class="headerlink" title="Chunkserver"></a>Chunkserver</h4><p>Chunkserver是系统的存储节点，负责实际存储用户上传的文件。但是Chunkserver上存储的不是整个的文件而是固定大小（64MB）的Chunk，每个文件都会被切成等大的Chunk，每个Chunk按照用户设定的副本数量存在多个Chunkserver中。Chunkserver会定期向Master发送心跳，并通过心跳与Master交换信息。Chunkserver与其他Chunkserver和Client之间会通过建立管道传输Chunk和接受Chunk。</p>
 <h4 id="Client"><a href="#Client" class="headerlink" title="Client"></a>Client</h4><p>Client是供用户使用的客户端，用户通过客户端向系统发送各个指令。具体而言，Client会向Master请求获取或修改元数据，与Chunkserver建立管道传输和接受Chunk。</p>
-<img src="./Catdfs Introduction/architecture.png" width="750" title="Architecture of CatDFS"/>
+<img src="/2022/11/07/catdfs/Catdfs%20Introduction/architecture.png" width="750" title="Architecture of CatDFS">
 
 <h3 id="元数据"><a href="#元数据" class="headerlink" title="元数据"></a>元数据</h3><p>CatDFS的元数据主要可分为三部分：Chunk元数据，DataNode（即Chunkserver）元数据和文件树。</p>
 <h4 id="Chunk元数据"><a href="#Chunk元数据" class="headerlink" title="Chunk元数据"></a>Chunk元数据</h4><p>Chunk元数据中主要包括chunksMap和pendingChunkQueue。chunksMap包含了当前系统中储存的所有Chunk以实现对Chunk O(1)的查找。每个Chunk中会使用两个set分别存有当前已经存储该Chunk的DataNode（dataNodes），和已经分配了存储该Chunk但尚未确认储存完成的DataNode（pendingDataNodes）。pendingChunkQueue是一个线程安全的队列，其中存有当前所有缺少副本等待系统分配的Chunk，每个Chunk在队列中出现一个即代表这个Chunk当前缺少一个副本。</p>
 <h4 id="DataNode元数据"><a href="#DataNode元数据" class="headerlink" title="DataNode元数据"></a>DataNode元数据</h4><p>DataNode元数据中主要包括dataNodeMap和dataNodeHeap。dataNodeMap包含了当前系统中所有尚未死亡的DataNode（也就是Chunkserver）以实现对DataNode O(1)的查找。每个DataNode会用一个set记录该DataNode存有的Chunk（Chunks），用一个map记录所有尚未确认完成的Chunk发送任务（FutureSendChunks）。</p>
 <h4 id="文件树"><a href="#文件树" class="headerlink" title="文件树"></a>文件树</h4><p>文件树采用前缀树（Trie）结构，每一个节点代表一个目录或文件，每个节点会存储自己的父亲节点和儿子节点（通过map）。每次查找都会根据文件名沿树查找，平均时间复杂度为O(1)。</p>
-<img src="./Catdfs Introduction/metadata.png" width="750"/>
+<img src="/2022/11/07/catdfs/Catdfs%20Introduction/metadata.png" width="750">
 
 <h3 id="高可用性"><a href="#高可用性" class="headerlink" title="高可用性"></a>高可用性</h3><p>CatDFS的Master节点高可用性主要采用由Raft共识算法保证元数据一致性的Master多节点方案（基于<a target="_blank" rel="noopener" href="https://github.com/hashicorp/raft">hashicorp&#x2F;raft</a>实现），并借助Etcd来进行服务注册和发现。</p>
 <h4 id="Leader切换"><a href="#Leader切换" class="headerlink" title="Leader切换"></a>Leader切换</h4><p>当Leader节点崩溃或是出现网络故障一定时间没有和集群其他节点保持联系后，Master集群会重新选举出的Leader节点并进行Leader切换。</p>
@@ -200,7 +200,7 @@
 <h4 id="接受转发和IO分离"><a href="#接受转发和IO分离" class="headerlink" title="接受转发和IO分离"></a>接受转发和IO分离</h4><p>因为IO非常缓慢，主线程进行频繁的IO会很影响pipline的传输效率，所以采用协程加管道的方式使得Chunkserver在协程中将接收到的piece写入到硬盘中，而主线程只负责接收piece，放入管道传给协程以及将piece转发给下一个Chunkserver</p>
 <h4 id="递归完成数据传输"><a href="#递归完成数据传输" class="headerlink" title="递归完成数据传输"></a>递归完成数据传输</h4><p>当一个Chunkserver A被client或其他Chunkserver通过rpc调用transferChunk方法时，其会从Stream传递来的metadata中得到当前剩下的需要传输的Chunkserver的切片，并取第一个Chunkserver B通过rpc调用B的transferChunk方法得到一个传输连接。</p>
 <p>假设当前有client需要向Chunkserver A和Chunkserver B，Chunkserver C传输一个Chunk，这种设计可以使client在通过rpc调用A的transferChunk方法建立一个stream连接来传输chunk时，A会同样通过调用B的transferChunk方法建立一个Stream连接，B会同样通过调用C的transferChunk方法建立一个Stream连接，这样整个pipline就建立起来了，在client向A传输一个piece时，A会立即使用持有的B的stream连接将piece转发给B，B收到后同理转发给C。</p>
-<img src="./Catdfs Introduction/transfer.png" width="750"/>
+<img src="/2022/11/07/catdfs/Catdfs%20Introduction/transfer.png" width="750">
 
 <h4 id="错误处理"><a href="#错误处理" class="headerlink" title="错误处理"></a>错误处理</h4><p>一个管道中的每一个Chunkserver都可能出现两种错误：文件写入错误或是数据传输错误。文件写入错误只会影响到单个节点,而数据传输错误会影响到发生错误的节点及其后续的所有节点。</p>
 <p>为了得到所有存储Chunk失败的节点来让Master在之后能弥补缺失的副本，每个Chunkserver在传输完成后都会返回一个错误列表给管道中的前一个节点该列表包含该节点及该节点之后所有节点中传输失败的节点地址，该列表的维护机制如下：</p>
@@ -212,7 +212,7 @@
 </ul>
 <p>通过该机制，管道的第一个节点也就是发送方能够获取到管道中所有存储Chunk失败的节点并统计数量将其返回给Master。</p>
 <p>Master会将向pendingChunkQueue中加入此数量的该Chunk，并在之后通过消费pendingChunkQueue来补齐该Chunk的副本。</p>
-<img src="./Catdfs Introduction/transferError.png" width="750"/>
+<img src="/2022/11/07/catdfs/Catdfs%20Introduction/transferError.png" width="750">
 
 <h3 id="缩容"><a href="#缩容" class="headerlink" title="缩容"></a>缩容</h3><p>Master在一定时间没有收到某个Chunkserver的心跳后会判定该Chunkserver死亡，触发缩容。</p>
 <p>Chunkserver死亡的判定条件：</p>
@@ -233,7 +233,7 @@
 </li>
 </ol>
 <p>具体流程如图所示（图片较大以至于Github不能很好的显示，建议下载查看）：</p>
-<img src="./Catdfs Introduction/shrink.png" width="750"/>
+<img src="/2022/11/07/catdfs/Catdfs%20Introduction/shrink.png" width="750">
 
 <h3 id="扩容"><a href="#扩容" class="headerlink" title="扩容"></a>扩容</h3><p>扩容处理应该在新增Chunkserver节点时触发，而不是Chunkserver重新上线时触发。</p>
 <p>触发条件：</p>
@@ -253,7 +253,7 @@
 </ol>
 <p>需要进行扩容操作的Chunkserver在操作还未完成时，是无法正常参与Master调度，直到通过心跳获取到大部分的分配Chunk已经成功移动到本地。</p>
 <p>具体流程如图所示：</p>
-<img src="./Catdfs Introduction/expand.png" width="750"/>
+<img src="/2022/11/07/catdfs/Catdfs%20Introduction/expand.png" width="750">
 
 <h3 id="监控"><a href="#监控" class="headerlink" title="监控"></a>监控</h3><p>使用<code>Cadvisor</code>+<code>Prometheus</code>+<code>Grafana</code>作为可视化监控的组件。监控内容包括：</p>
 <ul>
